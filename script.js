@@ -475,10 +475,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Universal Search Functionality ---
-    const searchInput = document.querySelector('.search-bar input');
+    const searchInputs = document.querySelectorAll('.search-bar input, #headerSearchInput');
 
-    if (searchInput) {
-        searchInput.addEventListener('input', (e) => {
+    searchInputs.forEach(input => {
+        input.addEventListener('input', (e) => {
             const searchTerm = e.target.value.toLowerCase().trim();
             
             // List of all possible searchable items across pages
@@ -521,6 +521,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         });
+    });
+
+    // --- Expanding Header Search Logic ---
+    const mainHeader = document.getElementById('mainHeader');
+    const openSearchBtn = document.getElementById('openSearchBtn');
+    const closeSearchBtn = document.getElementById('closeSearchBtn');
+    const headerSearchInput = document.getElementById('headerSearchInput');
+
+    if (openSearchBtn && mainHeader) {
+        openSearchBtn.addEventListener('click', () => {
+            mainHeader.classList.add('search-active');
+            setTimeout(() => {
+                headerSearchInput.focus();
+            }, 100);
+        });
+    }
+
+    if (closeSearchBtn && mainHeader) {
+        closeSearchBtn.addEventListener('click', () => {
+            mainHeader.classList.remove('search-active');
+            headerSearchInput.value = '';
+            // Trigger input event to clear results
+            headerSearchInput.dispatchEvent(new Event('input'));
+        });
     }
 
     // --- Points Card Flip ---
@@ -531,3 +555,167 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// --- Digital Access Card Logic ---
+const initDigitalKey = () => {
+    const unlockBtn = document.getElementById('unlockBtn');
+    const digitalCard = document.getElementById('digitalCard');
+    const doorItems = document.querySelectorAll('.door-item');
+
+    if (unlockBtn && digitalCard) {
+        unlockBtn.addEventListener('click', () => {
+            // Unlocking state
+            unlockBtn.disabled = true;
+            unlockBtn.innerHTML = '<ion-icon name="sync-outline" class="spin"></ion-icon> Unlocking...';
+            
+            // Add ripple to card
+            const ripple = document.createElement('div');
+            ripple.className = 'unlock-ripple animate-ripple';
+            digitalCard.appendChild(ripple);
+            
+            // Success after delay
+            setTimeout(() => {
+                digitalCard.classList.add('success');
+                unlockBtn.innerHTML = '<ion-icon name="checkmark-circle-outline"></ion-icon> Door Unlocked';
+                unlockBtn.style.background = 'linear-gradient(135deg, #059669 0%, #064e3b 100%)';
+                
+                // Feedback
+                if (window.navigator.vibrate) {
+                    window.navigator.vibrate([100, 30, 100]);
+                }
+
+                // Reset after 3 seconds
+                setTimeout(() => {
+                    digitalCard.classList.remove('success');
+                    ripple.remove();
+                    unlockBtn.disabled = false;
+                    unlockBtn.innerHTML = '<ion-icon name="bluetooth-outline"></ion-icon> Tap to Unlock';
+                    unlockBtn.style.background = '';
+                }, 3000);
+            }, 1200);
+        });
+    }
+
+    // Door Selection
+    doorItems.forEach(item => {
+        item.addEventListener('click', () => {
+            doorItems.forEach(d => {
+                d.classList.remove('selected');
+                const check = d.querySelector('.check-icon');
+                if (check) check.remove();
+            });
+            
+            item.classList.add('selected');
+            const checkIcon = document.createElement('ion-icon');
+            checkIcon.setAttribute('name', 'checkmark-circle');
+            checkIcon.className = 'check-icon';
+            item.appendChild(checkIcon);
+            
+            // Update card info if it's the apartment
+            const doorName = item.querySelector('h4').innerText;
+            console.log(`Selected Door: ${doorName}`);
+        });
+    });
+};
+
+// Initialize if on the digital key page
+if (window.location.pathname.includes('digital-key')) {
+    initDigitalKey();
+}
+
+// Ensure it also works with SPA-like transitions if any
+document.addEventListener('DOMContentLoaded', () => {
+    if (window.location.pathname.includes('digital-key')) {
+        initDigitalKey();
+    }
+});
+
+
+/* --- Notifications Logic --- */
+const initNotifications = () => {
+    const tabs = document.querySelectorAll('.notification-tabs button');
+    const rows = document.querySelectorAll('.notif-row');
+    const groupHeaders = document.querySelectorAll('.group-header');
+
+    if (!tabs.length) return;
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const filter = tab.getAttribute('data-filter');
+
+            // Update active tab
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            // Filter rows and track group visibility
+            let hasVisibleNew = false;
+            let hasVisiblePrevious = false;
+
+            rows.forEach(row => {
+                const category = row.getAttribute('data-category');
+                const isVisible = (filter === 'all' || filter === category);
+                row.style.display = isVisible ? 'flex' : 'none';
+
+                if (isVisible) {
+                    // Check if row belongs to 'NEW' or 'PREVIOUS'
+                    // We can check sibling order or add data-group to rows too
+                    let prevHeader = row.previousElementSibling;
+                    while (prevHeader && !prevHeader.classList.contains('group-header')) {
+                        prevHeader = prevHeader.previousElementSibling;
+                    }
+                    
+                    if (prevHeader) {
+                        if (prevHeader.getAttribute('data-group') === 'new') hasVisibleNew = true;
+                        if (prevHeader.getAttribute('data-group') === 'previous') hasVisiblePrevious = true;
+                    }
+                }
+            });
+
+            // Toggle group headers
+            groupHeaders.forEach(header => {
+                const group = header.getAttribute('data-group');
+                if (group === 'new') header.style.display = hasVisibleNew ? 'block' : 'none';
+                if (group === 'previous') header.style.display = hasVisiblePrevious ? 'block' : 'none';
+            });
+        });
+    });
+
+    // Action buttons
+    const approveBtns = document.querySelectorAll('.approve-btn');
+    approveBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            btn.textContent = 'Approved';
+            btn.style.background = '#10b981'; // Green
+            btn.style.width = '100px';
+            btn.disabled = true;
+            
+            const row = btn.closest('.notif-row');
+            row.style.opacity = '0.7';
+        });
+    });
+};
+
+// Initialize Notifications logic
+if (window.location.pathname.includes('notifications')) {
+    initNotifications();
+}
+
+// Add to DOMContentLoaded as well for reliability
+document.addEventListener('DOMContentLoaded', () => {
+    if (window.location.pathname.includes('notifications')) {
+        initNotifications();
+    }
+});
+
+// Focus search input when header search button is clicked
+document.querySelectorAll('.search-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const input = document.querySelector('.search-bar input');
+        if (input) {
+            input.focus();
+            input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    });
+});
+
